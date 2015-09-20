@@ -1,0 +1,103 @@
+---
+title: "Reproducible Research : Peer Assessment 1"
+output: html_document
+---
+
+Loading and preprocessing the data 
+
+```{r,echo=TRUE}
+#download files
+library(lattice)
+library (httr)
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+file <- "data.zip"
+if(!file.exists(file)){
+  download.file(url, file)
+}
+
+#unzip and create folders (if those ain't exist)
+datafolder <- "data"
+if(!file.exists(datafolder)){
+  unzip(file, list = FALSE, overwrite = TRUE)
+}
+# read data
+filename <- "activity.csv"
+data <- read.csv("./activity.csv")
+head(data)
+summary(data)
+```
+
+What is mean total number of steps taken per day?
+
+```{r, echo=TRUE}
+day_sum <- tapply(data$steps, data$date, sum, na.rm = TRUE)
+hist(day_sum, breaks = 10, main = "The histogram of the total number of steps taken per day")
+dev.off()
+
+mean(day_sum)
+median(day_sum)
+```
+
+What is the average daily activity pattern?
+
+```{r, echo=TRUE}
+five_minute_mean <- tapply(data$step, data$interval, mean, na.rm = TRUE)
+plot(data$interval[1:288], five_minute_mean, type = "l", xlab = "5 minutes interval in one day", 
+     ylab = "average number of steps taken")
+
+max <- max(five_minute_mean)
+index <- match(max, five_minute_mean)
+max_point <- five_minute_mean[index]
+max_interval <- as.numeric(names(max_point))
+max_interval
+```
+
+
+Imputing missing values 
+
+```{r, echo=TRUE}
+missing_values <- is.na(data[, 1])
+number_NA <- sum(missing_values)
+number_NA
+# I choose to fill the NAs with the mean for that 5-minute interval:
+five_minute_mean <- tapply(data$step, data$interval, mean, na.rm = TRUE)
+data[missing_values, 1] <- five_minute_mean[data[missing_values, 3]%/%100 * 12 + 
+                                              (data[missing_values, 3]%%100)/5 + 1]
+head(five_minute_mean)
+head(data)
+# Create a new dataset that is equal to the original dataset but with the missing data filled in.
+data2 <- data
+missing_values2 <- is.na(data2[, 1])
+number_NA2 <- sum(missing_values2)
+number_NA2
+
+# Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+day_sum2 <- tapply(data2$steps, data2$date, sum)
+hist(day_sum2, breaks = 10, main = "The histogram of the total number of steps taken per day (NA filled)")
+dev.off()
+mean(day_sum2)
+median(day_sum2)
+```
+
+Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo=TRUE}
+# Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+data2$date = as.Date(data2$date)
+data2$day <- weekdays(data2$date) == "Sunday" | weekdays(data2$date) == "Saturday"
+head(data2)
+
+data2_weekday <- data2[data2$day == FALSE, ]
+data2_weekend <- data2[data2$day == TRUE, ]
+
+# Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis)
+five_minute_mean_weekday <- tapply(data2_weekday$step, data2_weekday$interval, mean)
+five_minute_mean_weekend <- tapply(data2_weekend$step, data2_weekend$interval, mean)
+par(mfrow = c(2, 1))
+plot(data$interval[1:288], five_minute_mean_weekday, type = "l", xlab = "", ylab = "number of steps", 
+     main = "weekdays")
+plot(data$interval[1:288], five_minute_mean_weekend, type = "l", xlab = "interval", 
+     ylab = "number of steps", main = "weekends")
+dev.off()
+```
+
